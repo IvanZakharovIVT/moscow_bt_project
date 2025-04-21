@@ -9,3 +9,4 @@ class User(BaseDBModel):
     username = Column(String(), index=True, unique=True)
     user_type = Column(String(20))
     password = Column(String(255))
+    telegram_id = Column(String(20))
