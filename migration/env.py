@@ -33,6 +33,21 @@ target_metadata = BaseDBModel.metadata
 # ... etc.
 
 
+def include_object(object, name, type_, reflected, compare_to):
+    """
+    Функция для фильтрации объектов, которые Alembic должен учитывать.
+    """
+    # Игнорируем все объекты, которые не принадлежат схеме 'public'
+    if hasattr(object, "schema") and (object.schema != "public" or object.schema is None):
+        return False
+
+    # По желанию: игнорируем системные таблицы PostGIS
+    if name in {"spatial_ref_sys", "geometry_columns"}:
+        return False
+
+    # Включаем все остальные объекты
+    return True
+
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
 
@@ -72,7 +87,7 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection, target_metadata=target_metadata, include_object=include_object
         )
 
         with context.begin_transaction():
