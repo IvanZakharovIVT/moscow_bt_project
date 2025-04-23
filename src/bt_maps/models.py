@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 from sqlalchemy import Column, String, Integer, ForeignKey, TIMESTAMP
 from sqlalchemy.orm import relationship
 
+from src.auth.models import User
 from src.core.base_model import BaseDBModel
 
 
@@ -9,7 +12,8 @@ class BTPlace(BaseDBModel):
 
     imei = Column(String(15), index=True, unique=True)
     bt_session = relationship("BTSessions", back_populates="bt", lazy="subquery")
-
+    user_id = Column(Integer, ForeignKey(User.id, ondelete="SET NULL"), nullable=True)
+    user = relationship('User', foreign_keys='BTPlace.user_id')
 
 class BTSessions(BaseDBModel):
     __tablename__ = 'bt_session'

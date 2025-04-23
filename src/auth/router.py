@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, status, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
-from src.auth.config import REFRESH_TOKEN_TIMEDELTA, AUTH_TOKEN_TIMEDELTA
+from src.auth.config import REFRESH_TOKEN_TIMEDELTA, AUTH_TOKEN_TIMEDELTA, REMEMBER_ME_MUL_AUTH, REMEMBER_ME_MUL_REFRESH
 from src.auth.repository import UserRepository
 from src.auth.schema import UserBase
 from src.core.utils.user_auth_utils import authenticate_and_get_user_jwt, authenticate_and_get_user
@@ -65,25 +65,32 @@ async def refresh_token(
 @router.post("/auth_cookie")
 async def auth_cookie(
         response: Response,
+        remember_me: bool,
         credentials: Annotated[HTTPBasicCredentials, Depends(basic_security)],
         session: AsyncSession = Depends(get_session),
 ):
     user = await authenticate_and_get_user(credentials.username, credentials.password, session)
 
     subject = {"username": user.username, "id": user.id, "user_type": user.user_type}
+    if remember_me:
+        auth_time = REMEMBER_ME_MUL_AUTH
+        refresh_time = REMEMBER_ME_MUL_REFRESH
+    else:
+        auth_time = AUTH_TOKEN_TIMEDELTA
+        refresh_time = REFRESH_TOKEN_TIMEDELTA
     auth_token = access_security.create_access_token(
         subject=subject,
-        expires_delta=timedelta(minutes=AUTH_TOKEN_TIMEDELTA)
+        expires_delta=timedelta(minutes=auth_time)
     )
     refresh_token_val = refresh_security.create_refresh_token(
         subject=subject,
-        expires_delta=timedelta(minutes=REFRESH_TOKEN_TIMEDELTA)
+        expires_delta=timedelta(minutes=refresh_time)
     )
     response.set_cookie(
         key="access_token",
         value=auth_token,
         httponly=True,
-        max_age=AUTH_TOKEN_TIMEDELTA*60,  # 30 минут
+        max_age=auth_time,
         secure=True,  # Только для HTTPS
         samesite="lax"
     )
@@ -91,7 +98,7 @@ async def auth_cookie(
         key="refresh_token",
         value=refresh_token_val,
         httponly=True,
-        max_age=REFRESH_TOKEN_TIMEDELTA*60,  # 30 минут
+        max_age=refresh_time,
         secure=True,  # Только для HTTPS
         samesite="lax"
     )
